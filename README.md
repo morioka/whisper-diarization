@@ -112,3 +112,89 @@ If you use this in your research, please cite the project:
   year={2024}
 }
 ```
+
+## 日本語化
+
+- [話者分離と音声認識 (pyannote.audioでなくNeMoのdiarization modelを利用する)](https://zenn.dev/morioka/scraps/b13316c2660ed0)
+- [MahmoudAshraf97/whisper-diarization の punctuationモデルを日本語対応のものに差し替えてみる](https://zenn.dev/morioka/scraps/eeee265805c10d)
+- ~~※話者分離の区間誤りが修正されるわけではない。~~
+
+punctuation結果をもとに話者分離の区間を見直すので、そこに手を入れる必要があった。
+
+```
+Realligning Speech segments using Punctuation
+This code provides a method for disambiguating speaker labels in cases where a sentence is split between two different speakers. It uses punctuation markings to determine the dominant speaker for each sentence in the transcription.
+
+Speaker A: It's got to come from somewhere else. Yeah, that one's also fun because you know the lows are
+Speaker B: going to suck, right? So it's actually it hits you on both sides.
+For example, if a sentence is split between two speakers, the code takes the mode of speaker labels for each word in the sentence, and uses that speaker label for the whole sentence. This can help to improve the accuracy of speaker diarization, especially in cases where the Whisper model may not take fine utterances like "hmm" and "yeah" into account, but the Diarization Model (Nemo) may include them, leading to inconsistent results.
+
+The code also handles cases where one speaker is giving a monologue while other speakers are making occasional comments in the background. It ignores the comments and assigns the entire monologue to the speaker who is speaking the majority of the time. This provides a robust and reliable method for realigning speech segments to their respective speakers based on punctuation in the transcription.
+
+
+```
+```python
+if info.language in punct_model_langs:
+    # restoring punctuation in the transcript to help realign the sentences
+    punct_model = PunctuationModel(model="kredor/punctuate-all")
+
+    words_list = list(map(lambda x: x["word"], wsm))
+
+    labled_words = punct_model.predict(words_list, chunk_size=230)
+
+    ending_puncts = ".?!"
+    model_puncts = ".,;:!?"
+
+    # We don't want to punctuate U.S.A. with a period. Right?
+    is_acronym = lambda x: re.fullmatch(r"\b(?:[a-zA-Z]\.){2,}", x)
+
+    for word_dict, labeled_tuple in zip(wsm, labled_words):
+        word = word_dict["word"]
+        if (
+            word
+            and labeled_tuple[1] in ending_puncts
+            and (word[-1] not in model_puncts or is_acronym(word))
+        ):
+            word += labeled_tuple[1]
+            if word.endswith(".."):
+                word = word.rstrip(".")
+            word_dict["word"] = word
+
+else:
+    logging.warning(
+        f"Punctuation restoration is not available for {info.language} language. Using the original punctuation."
+    )
+
+wsm = get_realigned_ws_mapping_with_punctuation(wsm)
+ssm = get_sentences_speaker_mapping(wsm, speaker_ts)
+```
+
+```bash
+# Ubuntu22.04/WSL2 + CUDA12
+sudo apt update && sudo apt install cython3
+sudo apt update && sudo apt install ffmpeg
+
+# パッケージをインストール
+pip install -c constraints.txt -r requirements.txt
+
+# ctranslate2 を 4.5.0 より以前にダウングレード
+pip install ctranslate2==4.4.0
+
+# 日本語 punctuationモデル bobfromjapan/bert_japanese_punctuation の重みファイルをダウンロード
+mkdir weight
+cd weight
+wget https://huggingface.co/bobfromjapan/bert_japanese_punctuation/resolve/main/weight/punctuation_position_model.pth?download=true
+mv punctuation_position_model.pth\?download\=true punctuation_position_model.pth
+cd ..
+# 同、ユーティリティコードをダウンロード
+wget https://huggingface.co/bobfromjapan/bert_japanese_punctuation/resolve/main/insert_punctuation.py?download=true
+mv insert_punctuation.py\?download\=true insert_punctuation.py
+
+
+# サンプル音声を入手
+wget https://huggingface.co/kotoba-tech/kotoba-whisper-v2.2/resolve/main/sample_audio/sample_diarization_japanese.mp3
+
+# 話者分離
+python diarize.py  --whisper-model turbo --language ja -a sample_diarization_japanese.mp3
+
+```

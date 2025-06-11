@@ -33,6 +33,12 @@ from helpers import (
     write_srt,
 )
 
+# 日本語のサポートを追加
+import helpers
+helpers.punct_model_langs = helpers.punct_model_langs.append("ja")  # 日本語も含める
+
+from insert_punctuation import process_long_text
+
 mtypes = {"cpu": "int8", "cuda": "float16"}
 
 # Initialize parser
@@ -219,14 +225,35 @@ wsm = get_words_speaker_mapping(word_timestamps, speaker_ts, "start")
 
 if info.language in punct_model_langs:
     # restoring punctuation in the transcript to help realign the sentences
-    punct_model = PunctuationModel(model="kredor/punctuate-all")
+    if info.language in ["ja"]:
+        words_list = list(map(lambda x: x["word"], wsm))
 
-    words_list = list(map(lambda x: x["word"], wsm))
+        # 一旦、文字列として結合してから区切り処理
+        words_list = "".join(words_list)
+        labled_words = process_long_text(words_list)
 
-    labled_words = punct_model.predict(words_list, chunk_size=230)
+        ending_puncts = [',', '?', '!', '。', '？', '！']
+        model_puncts = [',', '.', ';', ':', '!', '?', '，', '、','；','：', '！','。', '？']
 
-    ending_puncts = ".?!"
-    model_puncts = ".,;:!?"
+        new_words = []
+        for label in labled_words:
+            if label in ending_puncts:
+                new_words[-1] = [new_words[-1][0]+label, label, 1.0]
+            elif label in model_puncts:
+                new_words[-1] = [new_words[-1][0]+label, '0', 1.0]
+            else:
+                new_words.append([label, '0', 1.0])
+        labled_words = new_words
+
+    else:
+        punct_model = PunctuationModel(model="kredor/punctuate-all")
+
+        words_list = list(map(lambda x: x["word"], wsm))
+
+        labled_words = punct_model.predict(words_list, chunk_size=230)
+
+        ending_puncts = ".?!"
+        model_puncts = ".,;:!?"
 
     # We don't want to punctuate U.S.A. with a period. Right?
     is_acronym = lambda x: re.fullmatch(r"\b(?:[a-zA-Z]\.){2,}", x)
@@ -249,7 +276,12 @@ else:
         " Using the original punctuation."
     )
 
-wsm = get_realigned_ws_mapping_with_punctuation(wsm)
+
+if info.language in ["ja"]:  # 日本語は1語=1文字で出力されるので、1文あたりの最大語数を多めにとる
+    helpers.sentence_ending_punctuations = [".","?","!","。","？","！"]
+    wsm = get_realigned_ws_mapping_with_punctuation(wsm,max_words_in_sentence=1500) 
+else:
+    wsm = get_realigned_ws_mapping_with_punctuation(wsm)
 ssm = get_sentences_speaker_mapping(wsm, speaker_ts)
 
 with open(f"{os.path.splitext(args.audio)[0]}.txt", "w", encoding="utf-8-sig") as f:
