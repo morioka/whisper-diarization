@@ -73,10 +73,30 @@ winget install ffmpeg
 ```
 pip install -c constraints.txt -r requirements.txt
 ```
+
+For Japanese language support,
+
+```bash
+# japanese punctuation model "bobfromjapan/bert_japanese_punctuation"
+# doenload its weight file
+mkdir -p weight
+cd weight
+wget https://huggingface.co/bobfromjapan/bert_japanese_punctuation/resolve/main/weight/punctuation_position_model.pth
+cd ..
+# download its utility code.
+wget https://huggingface.co/bobfromjapan/bert_japanese_punctuation/resolve/main/insert_punctuation.py
+```
+
 ## Usage 
 
 ```
 python diarize.py -a AUDIO_FILE_NAME
+```
+
+for japnese, the following usage is recommended.
+
+```
+python diarize.py --language ja -a AUDIO_FILE_NAME
 ```
 
 If your system has enough VRAM (>=10GB), you can use `diarize_parallel.py` instead, the difference is that it runs NeMo in parallel with Whisper, this can be beneficial in some cases and the result is the same since the two models are nondependent on each other. This is still experimental, so expect errors and sharp edges. Your feedback is welcome.
@@ -113,7 +133,7 @@ If you use this in your research, please cite the project:
 }
 ```
 
-## 日本語化
+## 日本語化 (Japanese Language Support)
 
 - 注： whisper モデルの制約か、日本語が1語=1文字単位で扱われて出力される。
 - punctuationに、日本語 punctuationモデル bobfromjapan/bert_japanese_punctuationを用いた。
@@ -225,6 +245,7 @@ Speaker 0: だ と 思 う ん で す よ ね。 水 を マ レ ー シ ア �
 
 ## 関連
 
-- [話者分離と音声認識 (pyannote.audioでなくNeMoのdiarization modelを利用する)](https://zenn.dev/morioka/scraps/b13316c2660ed0)
-- [MahmoudAshraf97/whisper-diarization の punctuationモデルを日本語対応のものに差し替えてみる](https://zenn.dev/morioka/scraps/eeee265805c10d)
+- [話者分離と音声認識 (pyannote.audioでなくNeMoのdiarization modelを利用する)](https://zenn.dev/morioka/scraps/b13316c2660ed0)(2025-02-05)
+- [MahmoudAshraf97/whisper-diarization の punctuationモデルを日本語対応のものに差し替えてみる](https://zenn.dev/morioka/scraps/eeee265805c10d)(2025-02-13)
+- [句読点のない日本語の文章に句読点を挿入するBERTモデルを作る - 端の知識の備忘録](https://hashicco.hatenablog.com/entry/2024/04/09/195211)(2024-04-09)
 
