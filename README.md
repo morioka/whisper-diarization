@@ -245,7 +245,6 @@ Speaker 0: だ と 思 う ん で す よ ね。 水 を マ レ ー シ ア �
 
 ## 関連
 
-- [話者分離と音声認識 (pyannote.audioでなくNeMoのdiarization modelを利用する)](https://zenn.dev/morioka/scraps/b13316c2660ed0)(2025-02-05)
-- [MahmoudAshraf97/whisper-diarization の punctuationモデルを日本語対応のものに差し替えてみる](https://zenn.dev/morioka/scraps/eeee265805c10d)(2025-02-13)
+- [話者分離と音声認識 (定番のpyannote.audioでなくNeMoのdiarization modelを利用)+日本語化)](https://zenn.dev/morioka/scraps/b13316c2660ed0)(2025-06-14 最終更新)
 - [句読点のない日本語の文章に句読点を挿入するBERTモデルを作る - 端の知識の備忘録](https://hashicco.hatenablog.com/entry/2024/04/09/195211)(2024-04-09)
 
